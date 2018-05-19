@@ -118,25 +118,63 @@
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
   <data name="ClearObjects" xml:space="preserve">
-    <value>DECLARE @Sql NVARCHAR(500);
-DECLARE @Cursor CURSOR;
+    <value>/* Azure friendly */
+/* Drop all Foreign Key constraints */
+DECLARE @name VARCHAR(128)
+DECLARE @constraint VARCHAR(254)
+DECLARE @SQL VARCHAR(254)
 
-SET @Cursor = CURSOR FAST_FORWARD FOR
-SELECT DISTINCT sql = 'ALTER TABLE [' + tc2.TABLE_NAME + '] DROP [' + rc1.CONSTRAINT_NAME + ']'
-FROM INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS rc1
-LEFT JOIN INFORMATION_SCHEMA.TABLE_CONSTRAINTS tc2 ON tc2.CONSTRAINT_NAME =rc1.CONSTRAINT_NAME;
+SELECT @name = (SELECT TOP 1 TABLE_NAME FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS WHERE constraint_catalog=DB_NAME() AND CONSTRAINT_TYPE = 'FOREIGN KEY' ORDER BY TABLE_NAME)
 
-OPEN @Cursor FETCH NEXT FROM @Cursor INTO @Sql;
-
-WHILE (@@FETCH_STATUS = 0)
+WHILE @name is not null
 BEGIN
-    Exec SP_EXECUTESQL @Sql;
-    FETCH NEXT FROM @Cursor INTO @Sql;
-END;
+    SELECT @constraint = (SELECT TOP 1 CONSTRAINT_NAME FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS WHERE constraint_catalog=DB_NAME() AND CONSTRAINT_TYPE = 'FOREIGN KEY' AND TABLE_NAME = @name ORDER BY CONSTRAINT_NAME)
+    WHILE @constraint IS NOT NULL
+    BEGIN
+        SELECT @SQL = 'ALTER TABLE [dbo].[' + RTRIM(@name) +'] DROP CONSTRAINT [' + RTRIM(@constraint) +']'
+        EXEC (@SQL)
+        PRINT 'Dropped FK Constraint: ' + @constraint + ' on ' + @name
+        SELECT @constraint = (SELECT TOP 1 CONSTRAINT_NAME FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS WHERE constraint_catalog=DB_NAME() AND CONSTRAINT_TYPE = 'FOREIGN KEY' AND CONSTRAINT_NAME &lt;&gt; @constraint AND TABLE_NAME = @name ORDER BY CONSTRAINT_NAME)
+    END
+SELECT @name = (SELECT TOP 1 TABLE_NAME FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS WHERE constraint_catalog=DB_NAME() AND CONSTRAINT_TYPE = 'FOREIGN KEY' ORDER BY TABLE_NAME)
+END
+GO
 
-CLOSE @Cursor DEALLOCATE @Cursor;
+/* Drop all Primary Key constraints */
+DECLARE @name VARCHAR(128)
+DECLARE @constraint VARCHAR(254)
+DECLARE @SQL VARCHAR(254)
 
-EXEC sp_MSForEachTable 'DROP TABLE ?';</value>
+SELECT @name = (SELECT TOP 1 TABLE_NAME FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS WHERE constraint_catalog=DB_NAME() AND CONSTRAINT_TYPE = 'PRIMARY KEY' ORDER BY TABLE_NAME)
+
+WHILE @name IS NOT NULL
+BEGIN
+    SELECT @constraint = (SELECT TOP 1 CONSTRAINT_NAME FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS WHERE constraint_catalog=DB_NAME() AND CONSTRAINT_TYPE = 'PRIMARY KEY' AND TABLE_NAME = @name ORDER BY CONSTRAINT_NAME)
+    WHILE @constraint is not null
+    BEGIN
+        SELECT @SQL = 'ALTER TABLE [dbo].[' + RTRIM(@name) +'] DROP CONSTRAINT [' + RTRIM(@constraint)+']'
+        EXEC (@SQL)
+        PRINT 'Dropped PK Constraint: ' + @constraint + ' on ' + @name
+        SELECT @constraint = (SELECT TOP 1 CONSTRAINT_NAME FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS WHERE constraint_catalog=DB_NAME() AND CONSTRAINT_TYPE = 'PRIMARY KEY' AND CONSTRAINT_NAME &lt;&gt; @constraint AND TABLE_NAME = @name ORDER BY CONSTRAINT_NAME)
+    END
+SELECT @name = (SELECT TOP 1 TABLE_NAME FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS WHERE constraint_catalog=DB_NAME() AND CONSTRAINT_TYPE = 'PRIMARY KEY' ORDER BY TABLE_NAME)
+END
+GO
+
+/* Drop all tables */
+DECLARE @name VARCHAR(128)
+DECLARE @SQL VARCHAR(254)
+
+SELECT @name = (SELECT TOP 1 [name] FROM sysobjects WHERE [type] = 'U' AND category = 0 ORDER BY [name])
+
+WHILE @name IS NOT NULL
+BEGIN
+    SELECT @SQL = 'DROP TABLE [dbo].[' + RTRIM(@name) +']'
+    EXEC (@SQL)
+    PRINT 'Dropped Table: ' + @name
+    SELECT @name = (SELECT TOP 1 [name] FROM sysobjects WHERE [type] = 'U' AND category = 0 AND [name] &gt; @name ORDER BY [name])
+END
+GO</value>
   </data>
   <data name="CreateDatabase" xml:space="preserve">
     <value>IF NOT EXISTS( SELECT * FROM SYS.DATABASES WHERE NAME='{0}')

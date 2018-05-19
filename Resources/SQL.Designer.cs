@@ -61,23 +61,17 @@ namespace Fosol.Data.Resources {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to DECLARE @Sql NVARCHAR(500);
-        ///DECLARE @Cursor CURSOR;
+        ///   Looks up a localized string similar to /* Azure friendly */
+        ////* Drop all Foreign Key constraints */
+        ///DECLARE @name VARCHAR(128)
+        ///DECLARE @constraint VARCHAR(254)
+        ///DECLARE @SQL VARCHAR(254)
         ///
-        ///SET @Cursor = CURSOR FAST_FORWARD FOR
-        ///SELECT DISTINCT sql = &apos;ALTER TABLE [&apos; + tc2.TABLE_NAME + &apos;] DROP [&apos; + rc1.CONSTRAINT_NAME + &apos;]&apos;
-        ///FROM INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS rc1
-        ///LEFT JOIN INFORMATION_SCHEMA.TABLE_CONSTRAINTS tc2 ON tc2.CONSTRAINT_NAME =rc1.CONSTRAINT_NAME;
+        ///SELECT @name = (SELECT TOP 1 TABLE_NAME FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS WHERE constraint_catalog=DB_NAME() AND CONSTRAINT_TYPE = &apos;FOREIGN KEY&apos; ORDER BY TABLE_NAME)
         ///
-        ///OPEN @Cursor FETCH NEXT FROM @Cursor INTO @Sql;
-        ///
-        ///WHILE (@@FETCH_STATUS = 0)
+        ///WHILE @name is not null
         ///BEGIN
-        ///    Exec SP_EXECUTESQL @Sql;
-        ///    FETCH NEXT FROM @Cursor INTO @Sql;
-        ///END;
-        ///
-        ///CLOS [rest of string was truncated]&quot;;.
+        ///    SELECT @constraint = (SELECT TOP 1 CONSTRAINT_NAME FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS WHERE constraint_catalog=DB_NAME() AND CONSTRAINT_TYP [rest of string was truncated]&quot;;.
         /// </summary>
         internal static string ClearObjects {
             get {
